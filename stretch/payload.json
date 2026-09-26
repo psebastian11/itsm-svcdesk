@@ -1,0 +1,4 @@
+[
+  {"environment": "production", "unplanned": true, "caused_by": "INC-123"},
+  {"environment": "production", "unplanned": false, "caused_by": null}
+]
