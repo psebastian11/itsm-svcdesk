@@ -28,6 +28,12 @@ write your own), and read the course package (`README.md`, `PREWORK.md`, `lab1/`
 | `specs/` | your specifications, published and receipted before any code |
 | `src/` | your implementation |
 | `.github/workflows/tier-a.yml` | runs the checker on every push and publishes `report.json` as an artifact with a step summary |
+
+## Lab 3 observability
+
+`GET /kb/search?q=...` forwards searches to `kb-index`; `/metrics` exposes the request-duration histogram used by
+the Prometheus alert rules and Grafana dashboard. Start the dependency with the service, and start the optional
+monitoring stack with `docker compose --profile observability up -d`.
 | `.gitignore` | keeps `report.json`, virtual environments and local data out of git |
 | `.gitattributes` | LF line endings on every system, so the checker's git sees a clean tree on Windows too; keep it |
 

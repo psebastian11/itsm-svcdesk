@@ -1,0 +1,19 @@
+# ai-generated: 100% - select the svcdesk workload for Prometheus scraping
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: svcdesk
+  namespace: default
+  labels:
+    app: svcdesk
+spec:
+  selector:
+    matchLabels:
+      app: svcdesk
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 5s

@@ -1,0 +1,11 @@
+# ai-generated: 100% - provision dashboards exported to the Lab 3 directory
+apiVersion: 1
+providers:
+  - name: lab3
+    folder: svcdesk
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards

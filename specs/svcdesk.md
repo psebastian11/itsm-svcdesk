@@ -31,6 +31,8 @@ Each ticket possesses:
 
 ## Endpoints
 - `GET /health`: Returns HTTP 200 with `{"status": "ok", "service": "svcdesk"}`.
+- `GET /kb/search?q=<text>`: Searches the configured `KB_INDEX_URL` dependency and returns the upstream hits; invalid queries are refused and upstream failures return `502 upstream_unavailable`.
+- `GET /metrics`: Exposes the request-duration histogram in Prometheus text format, with route-template, method, and response-status labels.
 - `POST /tickets`: Creates a new ticket, validates fields, computes priority and SLA deadlines. Returns HTTP 201.
 - `GET /tickets`: Returns an array of tickets matching optional query parameters `state` and `priority`.
 - `GET /tickets/{id}`: Returns the complete ticket object or 404 if not found.

@@ -1,19 +1,135 @@
-# ai-generated: 100% - Lab 2 final fixes
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+# ai-generated: 100% - Lab 2 code extended with Lab 3 search and request metrics
+import json
+import os
+import time
+import uuid
+from datetime import datetime
+from threading import Lock
+from typing import Any, Dict, List, Optional
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import urlopen
+from zoneinfo import ZoneInfo
+
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
-import uuid, math
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 app = FastAPI()
 db = {}
+BUCKETS = (
+    0.02, 0.023, 0.0265, 0.0305, 0.035, 0.0403, 0.0463, 0.0532, 0.0611,
+    0.0703, 0.0809, 0.093, 0.107, 0.123, 0.141, 0.162, 0.186, 0.214,
+    0.246, 0.25, 0.283, 0.325, 0.374, 0.43, 0.494, 0.568, 0.653, 0.751,
+    0.864, 0.994,
+)
+KB_INDEX_URL = os.environ.get("KB_INDEX_URL", "http://kb-index:8080").rstrip("/")
+request_observations = {}
+observations_lock = Lock()
 
 @app.exception_handler(RequestValidationError)
 async def val_err(req, exc):
     return JSONResponse(status_code=422, content={"error": {"code": "validation"}})
+
+def observe_request(method: str, route: str, status: int, elapsed: float) -> None:
+    key = (method, route, str(status))
+    with observations_lock:
+        observation = request_observations.setdefault(key, [0, 0.0, [0] * len(BUCKETS)])
+        observation[0] += 1
+        observation[1] += elapsed
+        for index, boundary in enumerate(BUCKETS):
+            if elapsed <= boundary:
+                observation[2][index] += 1
+
+def route_template(request: Request) -> str:
+    route = request.scope.get("route")
+    template = getattr(route, "path", None)
+    return template if isinstance(template, str) else "unmatched"
+
+@app.middleware("http")
+async def request_metrics(request: Request, call_next):
+    if request.url.path == "/metrics":
+        return await call_next(request)
+
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        observe_request(
+            request.method,
+            route_template(request),
+            500,
+            time.perf_counter() - started,
+        )
+        raise
+    observe_request(
+        request.method,
+        route_template(request),
+        response.status_code,
+        time.perf_counter() - started,
+    )
+    return response
+
+def prometheus_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    lines = [
+        "# HELP http_server_request_duration_seconds Duration of HTTP server requests.",
+        "# TYPE http_server_request_duration_seconds histogram",
+    ]
+    with observations_lock:
+        snapshot = {
+            key: (count, total, tuple(cumulative))
+            for key, (count, total, cumulative) in request_observations.items()
+        }
+
+    for (method, route, status), (count, total, cumulative) in sorted(snapshot.items()):
+        labels = (
+            f'http_request_method="{prometheus_escape(method)}",'
+            f'http_route="{prometheus_escape(route)}",'
+            f'http_response_status_code="{prometheus_escape(status)}"'
+        )
+        for boundary, bucket_count in zip(BUCKETS, cumulative):
+            lines.append(
+                f'http_server_request_duration_seconds_bucket{{{labels},le="{boundary:g}"}} {bucket_count}'
+            )
+        lines.extend((
+            f'http_server_request_duration_seconds_bucket{{{labels},le="+Inf"}} {count}',
+            f'http_server_request_duration_seconds_sum{{{labels}}} {total:.9f}',
+            f'http_server_request_duration_seconds_count{{{labels}}} {count}',
+        ))
+    return Response("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4; charset=utf-8")
+
+@app.get("/kb/search")
+def search_knowledge_base(q: str = Query(..., min_length=1, max_length=200)):
+    url = f"{KB_INDEX_URL}/search?{urlencode({'q': q})}"
+    try:
+        with urlopen(url, timeout=3) as upstream:
+            if upstream.status != 200:
+                return JSONResponse(
+                    status_code=502,
+                    content={"error": {"code": "upstream_unavailable"}},
+                )
+            payload = json.loads(upstream.read())
+    except HTTPError:
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"code": "upstream_unavailable"}},
+        )
+    except (URLError, TimeoutError, OSError, json.JSONDecodeError):
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"code": "upstream_unavailable"}},
+        )
+    if not isinstance(payload, dict) or "hits" not in payload:
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"code": "upstream_unavailable"}},
+        )
+    return {"query": q, "hits": payload["hits"]}
 
 def get_now(req: Request) -> datetime:
     tc = req.headers.get("X-Test-Clock")
@@ -24,6 +140,13 @@ def get_now(req: Request) -> datetime:
 
 @app.get("/health")
 def health(): return {"status": "ok", "service": "svcdesk"}
+
+@app.get("/tickets/{tid}")
+def get_ticket(tid: str):
+    ticket = db.get(tid)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
 
 class Reporter(BaseModel):
     name: str
