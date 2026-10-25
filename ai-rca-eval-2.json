@@ -1,0 +1,40 @@
+{
+  "investigator": {
+    "agent": "Copilot SDK assistant in VS Code",
+    "model": "Copilot SDK runtime model (model identifier not exposed)",
+    "mcp_server": "Prometheus v3.15.0 HTTP API, read-only queries",
+    "transcript": "ai-rca/second/transcript.md"
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "hypothesis": "Payment's internal charge span shows a sustained failure signature: its five-minute error rate exceeds 0.01 spans per second.",
+      "component": "payment",
+      "predicts": "sum(rate(traces_span_metrics_calls_total{service_name=\"payment\", span_name=\"charge\", span_kind=\"SPAN_KIND_INTERNAL\", status_code=\"STATUS_CODE_ERROR\"}[5m])) > 0.01",
+      "at": "2026-10-12T06:42:00Z",
+      "result": true,
+      "verdict": "correct",
+      "evidence": "The recorded snapshot returns about 0.0321 error spans/s at 06:42:00Z and no result at 06:31:23Z."
+    },
+    {
+      "id": "H2",
+      "hypothesis": "Frontend server traffic is more than five times its healthy-baseline rate, consistent with a homepage load surge.",
+      "component": "frontend",
+      "predicts": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) > 15",
+      "at": "2026-10-12T06:42:00Z",
+      "result": true,
+      "verdict": "correct",
+      "evidence": "Frontend server traffic is about 63.41 spans/s at 06:42:00Z versus 3.81 spans/s at the healthy-baseline instant."
+    },
+    {
+      "id": "H3",
+      "hypothesis": "Checkout PlaceOrder server spans are failing at the same time as payment Charge server spans, so payment is a plausible upstream contributor.",
+      "component": "checkout",
+      "predicts": "(sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\", span_name=\"oteldemo.CheckoutService/PlaceOrder\", span_kind=\"SPAN_KIND_SERVER\", status_code=\"STATUS_CODE_ERROR\"}[5m])) > 0.01) and on() (sum(rate(traces_span_metrics_calls_total{service_name=\"payment\", span_name=\"oteldemo.PaymentService/Charge\", span_kind=\"SPAN_KIND_SERVER\", status_code=\"STATUS_CODE_ERROR\"}[5m])) > 0.01)",
+      "at": "2026-10-12T06:42:00Z",
+      "result": true,
+      "verdict": "partially_correct",
+      "evidence": "Both server error rates are about 0.0321 spans/s at the incident instant, and the query is empty at baseline. Co-occurrence supports checkout symptoms but cannot alone prove payment caused them."
+    }
+  ]
+}

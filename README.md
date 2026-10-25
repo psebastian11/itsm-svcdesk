@@ -34,6 +34,13 @@ write your own), and read the course package (`README.md`, `PREWORK.md`, `lab1/`
 `GET /kb/search?q=...` forwards searches to `kb-index`; `/metrics` exposes the request-duration histogram used by
 the Prometheus alert rules and Grafana dashboard. Start the dependency with the service, and start the optional
 monitoring stack with `docker compose --profile observability up -d`.
+
+## Lab 4 incident response
+
+The shop symptom alerts are in `prometheus/demo-alerts.yml`; `alertmanager/` contains the pager/chat routing
+configuration and executable routing/inhibition cases. The assigned live or recorded incident evidence belongs in
+`incident/`, with its recomputed timestamps documented in `postmortem.md` and its investigated hypotheses in
+`ai-rca-eval.json`. Keep snapshot and ticket artifacts unchanged from the course source.
 | `.gitignore` | keeps `report.json`, virtual environments and local data out of git |
 | `.gitattributes` | LF line endings on every system, so the checker's git sees a clean tree on Windows too; keep it |
 

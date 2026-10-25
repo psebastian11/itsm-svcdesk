@@ -1,0 +1,31 @@
+# ai-generated: 80% - adapted the course Lab 4 alerting requirements and thresholds to the shop telemetry
+groups:
+  - name: shop-symptoms
+    rules:
+      - alert: CheckoutErrorRate
+        expr: |
+          sum(rate(traces_span_metrics_calls_total{service_name="checkout", span_kind="SPAN_KIND_SERVER", status_code="STATUS_CODE_ERROR"}[5m]))
+          /
+          sum(rate(traces_span_metrics_calls_total{service_name="checkout", span_kind="SPAN_KIND_SERVER"}[5m]))
+          > 0.05
+        for: 1m
+        labels:
+          service: checkout
+          severity: P1
+        annotations:
+          summary: "More than 5% of checkout server requests fail"
+
+      - alert: CheckoutLatencyP99
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le) (
+              rate(traces_span_metrics_duration_milliseconds_bucket{service_name="checkout", span_kind="SPAN_KIND_SERVER"}[5m])
+            )
+          ) > 2000
+        for: 1m
+        labels:
+          service: checkout
+          severity: P1
+        annotations:
+          summary: "Checkout server request p99 latency exceeds 2 seconds"
