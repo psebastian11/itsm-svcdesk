@@ -29,5 +29,13 @@ if ($env:ITSMLAB_IMAGE) { $image = $env:ITSMLAB_IMAGE }
 if (-not $image) { $image = $defaultImage }
 
 $here = (Get-Location).Path
-& docker run --rm -v "${here}:/work" -w /work -v /var/run/docker.sock:/var/run/docker.sock $image @args
+# Lab 5 checks read runs and attestations from the GitHub API. Reuse an existing gh login
+# without printing or persisting its token.
+if (-not $env:GH_TOKEN -and (Get-Command gh -ErrorAction SilentlyContinue) -and
+    (gh auth status --hostname github.com 2>$null)) {
+    $env:GH_TOKEN = (gh auth token).Trim()
+}
+# GITHUB_TOKEN and GH_TOKEN reach the checker when they are set (a bare -e passes a variable only if it exists):
+# Lab 5 reads your runs and attestations from the GitHub API, which allows 60 anonymous calls an hour.
+& docker run --rm -e GITHUB_TOKEN -e GH_TOKEN -v "${here}:/work" -w /work -v /var/run/docker.sock:/var/run/docker.sock $image @args
 exit $LASTEXITCODE

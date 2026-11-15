@@ -33,9 +33,20 @@ case "${DOCKER_HOST:-}" in
   *) extra="-e DOCKER_HOST=$DOCKER_HOST" ;;   # tcp://, ssh://: the CLI in the container needs it
 esac
 
+# Lab 5 checks read runs and attestations from the GitHub API. Reuse an existing gh login
+# without printing or persisting its token.
+if [ -z "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+  && gh auth status --hostname github.com >/dev/null 2>&1; then
+  GH_TOKEN="$(gh auth token)"
+  export GH_TOKEN
+fi
+
+# GITHUB_TOKEN and GH_TOKEN reach the checker when they are set (a bare -e passes a variable only if it exists):
+# Lab 5 reads your runs and attestations from the GitHub API, which allows 60 anonymous calls an hour.
 # shellcheck disable=SC2086
 exec docker run --rm \
   -v "$PWD:$PWD" -w "$PWD" \
   -v "$sock:/var/run/docker.sock" \
+  -e GITHUB_TOKEN -e GH_TOKEN \
   $extra \
   "$image" "$@"

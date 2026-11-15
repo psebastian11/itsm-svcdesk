@@ -6,8 +6,8 @@ built in Lab 1, extended in the later labs. Keep it public, and keep personal da
 
 ## The one command
 
-    ./itsmlab.sh verify 1            # Linux, macOS
-    .\itsmlab.ps1 verify 1           # Windows PowerShell (once before: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)
+    ./itsmlab.sh verify 5            # Linux, macOS
+    .\itsmlab.ps1 verify 5           # Windows PowerShell (once before: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)
 
 It runs the published Tier A checker (a container) against this directory: builds and starts your service with
 `docker compose`, runs the published checks, prints a table, and exits 0 when every Core spec passes. Add
@@ -20,7 +20,7 @@ write your own), and read the course package (`README.md`, `PREWORK.md`, `lab1/`
 
 | path | what it is |
 |---|---|
-| `docker-compose.yml` | the compose contract: service `svcdesk` on 8080, `SVCDESK_TEST_CLOCK`, a named volume; `tests` profile commented out |
+| `docker-compose.yml` | the compose contract: service `svcdesk` on 8080, `KB_INDEX_URL`, and a `tests` profile |
 | `Dockerfile.example` | a Python 3.13 image skeleton; copy to `Dockerfile` or replace for your language |
 | `DECISIONS.md` | your reasoning artifact: front matter with the three decisions, three sections, five labels each |
 | `itsmlab.yaml` | lab number, baselines, your repository, the submissions repository, the checker image |
@@ -28,6 +28,10 @@ write your own), and read the course package (`README.md`, `PREWORK.md`, `lab1/`
 | `specs/` | your specifications, published and receipted before any code |
 | `src/` | your implementation |
 | `.github/workflows/tier-a.yml` | runs the checker on every push and publishes `report.json` as an artifact with a step summary |
+| `.github/workflows/ci.yml` | Lab 5 build, tests, security scans, image publication, and SARIF capture |
+| `bakeoff.py`, `bakeoff/` | Lab 5 SARIF evaluation and receipted scanner evidence |
+| `mutation/`, `semgrep/` | Lab 5 mutation tests and custom Semgrep rules |
+| `TRIAGE.md` | Lab 5 scanner findings, decisions, and bake-off interpretation |
 
 ## Lab 3 observability
 
@@ -49,3 +53,9 @@ configuration and executable routing/inhibition cases. The assigned live or reco
 The workflow `tier-a` runs on every push and on demand (Actions tab, "Run workflow"). It needs no secrets. The
 job is red when a Core spec fails; the step summary shows which checks, and `report.json` is attached as an
 artifact.
+
+## Lab 5 supply-chain checks
+
+The `ci` workflow builds and tests the service, scans dependencies, secrets, source and the container image, and
+attaches SARIF results. Run `./itsmlab.sh verify 5` after the corresponding GitHub Actions runs finish; with GitHub
+CLI authenticated, the wrapper passes its API token to the checker without printing it.

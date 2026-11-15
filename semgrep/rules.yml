@@ -1,0 +1,17 @@
+# ai-generated: 90% - wrote service-specific checks for ticket-state transitions and UTC test-clock handling
+rules:
+  - id: svcdesk-ticket-state-direct-write
+    languages: [python]
+    severity: WARNING
+    message: Ticket state changes should go through a validated transition helper.
+    patterns:
+      - pattern: db[$TICKET]["state"] = $STATE
+  - id: svcdesk-test-clock-normalizes-utc
+    languages: [python]
+    severity: WARNING
+    message: Test clock timestamps should be normalized to an explicit UTC offset.
+    patterns:
+      - pattern: datetime.fromisoformat($VALUE)
+      - pattern-inside: |
+          def get_now(...):
+              ...
